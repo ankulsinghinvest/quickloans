@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            onAuthStateChanged,
+            signOut,
+            GoogleAuthProvider,
+            signInWithPopup,
+            updateProfile
+        } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc,
+            getDoc 
+        } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-firestore.js";
+
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3TRfiOdSHVnH6Hn0jaS0aZaVlIlGMS_4",
+            authDomain: "invest-e5cda.firebaseapp.com",
+            projectId: "invest-e5cda",
+            storageBucket: "invest-e5cda.firebasestorage.app",
+            messagingSenderId: "605038315113",
+            appId: "1:605038315113:web:4f392b7be2efead81684f8",
+            measurementId: "G-5T03MXG5RN"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Initialize Google Auth Provider
+        const googleProvider = new GoogleAuthProvider();
+        
+        // Initialize Firestore
+        const db = getFirestore(app);
+        
+        // Make auth methods available globally
+        window.auth = auth;
+        window.googleProvider = googleProvider;
+        window.signInWithPopup = signInWithPopup;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.signOut = signOut;
+        window.updateProfile = updateProfile;
+        window.db = db;
+        window.setDoc = setDoc;
+        window.doc = doc;
+        window.getDoc = getDoc;
+
+        // Listen for auth state changes
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is signed in
+                console.log('User is signed in:', user);
+                document.body.classList.add('user-signed-in');
+            } else {
+                // User is signed out
+                console.log('User is signed out');
+                document.body.classList.remove('user-signed-in');
+            }
+        });
+    </script>
+    <script src="data.js" defer></script>
+    <script src="app/app.js" defer></script>
+    <style>
+        :root {
+            --dark-bg: #0A0E15;
+            --dark-card: #1A1E25;
+            --accent: #10B981;
+            --transition-bezier: cubic-bezier(0.4, 0, 0.2, 1);
+            --bounce-bezier: cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark-bg);
+            color: #ffffff;
+            height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.3s ease;
+            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: none;  /* IE and Edge */
+        }
+
+        /* Hide webkit scrollbar */
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Enhanced Header */
+        .header-gradient {
+            background: linear-gradient(180deg, rgba(10, 14, 21, 0.95) 0%, rgba(10, 14, 21, 0.8) 80%, rgba(10, 14, 21, 0));
+            backdrop-filter: blur(10px);
+        }
+
+        /* Enhanced Balance Card */
+        .balance-card {
+            background: linear-gradient(145deg, rgba(26, 30, 37, 0.9) 0%, rgba(26, 30, 37, 0.7) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Fund Cards */
+        .fund-card {
+            background: rgba(26, 30, 37, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .fund-card:hover {
+            background: rgba(26, 30, 37, 0.9);
+            transform: translateY(-2px);
+        }
+
+        /* History Items */
+        .history-item {
+            background: rgba(26, 30, 37, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Bottom Navigation - Solid Background */
+        .bottom-nav {
+            background-color: #1A1E25;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Search Bar */
+        .search-bar {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bottom-nav-item {
+            position: relative;
+            transition: all 0.4s var(--bounce-bezier);
+            width: 64px; /* Fixed width for better touch targets */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+            transform-origin: center bottom;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--accent);
+            transform: translateY(-4px);
+        }
+
+        .bottom-nav-item .icon-container {
+            position: relative;
+            z-index: 1;
+            width: 40px; /* Fixed width for better touch targets */
+            height: 40px; /* Fixed height for better touch targets */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s var(--bounce-bezier);
+        }
+
+        .bottom-nav-item .bg-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 40px;
+            height: 40px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bottom-nav-item.active .bg-circle {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0.1;
+        }
+
+        #nav-indicator {
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            position: absolute;
+            bottom: -8px;
+            transition: left 0.5s var(--bounce-bezier);
+            will-change: left;
+        }
+
+        .nav-ripple {
+            position: absolute;
+            background-color: var(--accent);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            opacity: 0.2;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        .page {
+            opacity: 1;
+            transform: translateX(0);
+            transition: 
+                opacity 0.5s var(--transition-bezier),
+                transform 0.5s var(--transition-bezier);
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            padding-bottom: 80px;
+        }
+
+        .page.hidden {
+            opacity: 0;
+            transform: translateX(30px);
+            pointer-events: none;
+        }
+
+        /* For any scrollable containers */
+        .scrollable {
+            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: none;  /* IE and Edge */
+        }
+
+        .scrollable::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Ensure main content area also hides scrollbar */
+        main {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        main::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Ensure content doesn't overlap with bottom nav */
+        .page {
+            padding-bottom: 80px; /* Add extra padding at bottom */
+        }
+
+        /* Fix for mobile safari bottom bar */
+        @supports (-webkit-touch-callout: none) {
+            .bottom-nav {
+                padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+            }
+        }
+
+        /* Ensure bottom nav stays above all content */
+        nav.fixed {
+            z-index: 1000;
+        }
+
+        /* Make touch targets larger on mobile */
+        @media (max-width: 640px) {
+            .bottom-nav-item .icon-container {
+                padding: 0.75rem;
+            }
+            
+            .bottom-nav-item span {
+                font-size: 0.675rem;
+            }
+        }
+
+        /* Card Animations */
+        .bg-[#1E2632]/95, 
+        .backdrop-blur-lg {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            transition: 
+                transform 0.3s var(--bounce-bezier),
+                background-color 0.3s var(--transition-bezier),
+                box-shadow 0.3s var(--transition-bezier);
+        }
+
+        /* Loan Cards Animation */
+        #instant-loans > div,
+        #personal-loans > div {
+            transition: 
+                transform 0.3s var(--bounce-bezier),
+                box-shadow 0.3s var(--transition-bezier),
+                background-color 0.3s var(--transition-bezier);
+            will-change: transform;
+        }
+
+        #instant-loans > div:hover,
+        #personal-loans > div:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Button Animations */
+        button {
+            transition: 
+                all 0.3s var(--transition-bezier),
+                transform 0.2s var(--bounce-bezier);
+            will-change: transform, background-color;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        /* Input Field Animations */
+        input {
+            transition: 
+                all 0.3s var(--transition-bezier),
+                background-color 0.3s var(--transition-bezier);
+        }
+
+        input:focus {
+            transform: translateY(-1px);
+        }
+
+        /* Manage Funds Grid Items */
+        .grid-cols-2 > div {
+            transition: 
+                transform 0.3s var(--bounce-bezier),
+                background-color 0.3s var(--transition-bezier);
+            will-change: transform;
+        }
+
+        .grid-cols-2 > div:hover {
+            transform: translateY(-4px);
+        }
+
+        /* History Items */
+        .history-item {
+            transition: 
+                transform 0.3s var(--bounce-bezier),
+                background-color 0.3s var(--transition-bezier);
+        }
+
+        .history-item:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Auth Page Transitions */
+        #authPage {
+            transition: 
+                opacity 0.4s var(--transition-bezier),
+                transform 0.4s var(--transition-bezier);
+        }
+
+        #authPage.page-enter {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        #authPage.page-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Performance Optimizations */
+        .gpu-accelerated {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        /* Mobile Touch Optimizations */
+        @media (hover: none) {
+            .bottom-nav-item:active .icon-container {
+                transform: scale(0.95);
+            }
+
+            .grid-cols-2 > div:active {
+                transform: scale(0.98);
+            }
+        }
+
+        /* Smooth Scrolling */
+        .scrollable {
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Remove Mobile Tap Highlight */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Enhanced Blur Effects */
+        .backdrop-blur-lg {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        /* Loading States */
+        .loading {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 100%
+            );
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            to {
+                transform: translateX(100%);
+            }
+        }
+    </style>
+</head>
+<body class="text-white">
+    <!-- Top Bar -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-[#0A0E15]/95 backdrop-blur-lg">
+        <!-- Top Bar -->
+        <div class="px-6 pt-8 pb-6">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gray-600 overflow-hidden hover:ring-2 hover:ring-[#10B981] transition-all">
+                        <img src="profile.jpg" alt="" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-400">Hello,</p>
+                        <h1 class="text-xl font-semibold">George</h1>
+                    </div>
+                </div>
+                <button onclick="navigateToSection('privacy')" 
+                        class="px-4 py-2 rounded-xl bg-[#1E2632] text-sm text-gray-300 flex items-center gap-2 hover:bg-[#1E2632]/80 transition-all">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Privacy Policy</span>
+                </button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="relative">
+                <div class="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#1E2632] hover:bg-[#1E2632]/80 transition-all">
+                    <i class="fas fa-search text-gray-400"></i>
+                    <input type="text" placeholder="Search" 
+                           class="bg-transparent w-full outline-none text-gray-300 placeholder-gray-500">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="pt-44 pb-28 px-6">
+        <div id="home" class="page space-y-8">
+            <!-- Balance Card -->
+            <div class="bg-[#1E2632]/95 backdrop-blur-lg rounded-2xl p-8 shadow-xl border border-white/5">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h2 class="text-4xl font-bold mb-2">₹8,45,220.85</h2>
+                        <p class="text-gray-400">Your Balance</p>
+                    </div>
+                    <button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-all">
+                        <i class="fas fa-ellipsis-h text-gray-400"></i>
+                    </button>
+                </div>
+                <div class="flex gap-4">
+                    <button class="flex-1 bg-[#10B981] hover:bg-[#059669] py-4 rounded-xl font-medium transition-all active:scale-95">
+                        Top Up
+                    </button>
+                    <button class="flex-1 bg-[#1A1E25] hover:bg-[#1A1E25]/80 py-4 rounded-xl font-medium transition-all active:scale-95">
+                        Cash Out
+                    </button>
+                </div>
+            </div>
+
+            <!-- Manage Funds -->
+            <div class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold">Manage Funds</h3>
+                    <a href="#" class="text-[#10B981] hover:text-[#059669] transition-all">View All</a>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <!-- Instant Loans -->
+                    <div class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 hover:bg-[#1E2632] transition-all duration-300 cursor-pointer border border-white/5"
+                         onclick="navigateToSection('loans', 'instant-loan')" data-fund-type="instant-loan">
+                        <div class="w-12 h-12 rounded-xl bg-[#10B981]/10 flex items-center justify-center mb-4">
+                            <i class="fas fa-bolt text-[#10B981] text-xl"></i>
+                        </div>
+                        <span class="text-sm text-gray-400">Instant Loans</span>
+                    </div>
+
+                    <!-- Personal Loans -->
+                    <div class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 hover:bg-[#1E2632] transition-all duration-300 cursor-pointer border border-white/5"
+                         onclick="navigateToSection('loans', 'personal-loan')" data-fund-type="personal-loan">
+                        <div class="w-12 h-12 rounded-xl bg-[#10B981]/10 flex items-center justify-center mb-4">
+                            <i class="fas fa-hand-holding-usd text-[#10B981] text-xl"></i>
+                        </div>
+                        <span class="text-sm text-gray-400">Personal Loan</span>
+                    </div>
+
+                    <!-- Investments -->
+                    <div class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 hover:bg-[#1E2632] transition-all duration-300 cursor-pointer border border-white/5"
+                         onclick="navigateToSection('invest')" data-fund-type="invest">
+                        <div class="w-12 h-12 rounded-xl bg-[#10B981]/10 flex items-center justify-center mb-4">
+                            <i class="fas fa-chart-line text-[#10B981] text-xl"></i>
+                        </div>
+                        <span class="text-sm text-gray-400">Investments</span>
+                    </div>
+
+                    <!-- Education Loans -->
+                    <div class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 hover:bg-[#1E2632] transition-all duration-300 cursor-pointer border border-white/5"
+                         onclick="navigateToSection('loans', 'education-loan')" data-fund-type="education-loan">
+                        <div class="w-12 h-12 rounded-xl bg-[#10B981]/10 flex items-center justify-center mb-4">
+                            <i class="fas fa-graduation-cap text-[#10B981] text-xl"></i>
+                        </div>
+                        <span class="text-sm text-gray-400">Education Loan</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History -->
+            <div class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-semibold">History</h3>
+                    <a href="#" class="text-[#10B981] hover:text-[#059669] transition-all">View All</a>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 hover:bg-[#1E2632] transition-all duration-300 border border-white/5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                <i class="fab fa-dropbox text-blue-500"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-base">Dropbox</p>
+                                <p class="text-sm text-gray-400">3 Feb, 8:41 PM</p>
+                            </div>
+                        </div>
+                        <p class="text-red-500 text-base">-₹3,999</p>
+                    </div>
+                    <div class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 hover:bg-[#1E2632] transition-all duration-300 border border-white/5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-lg overflow-hidden">
+                                <img src="profile.jpg" class="w-full h-full object-cover" alt="">
+                            </div>
+                            <div>
+                                <p class="font-medium text-base">Angela Ho</p>
+                                <p class="text-sm text-gray-400">1 Feb, 2:07 AM</p>
+                            </div>
+                        </div>
+                        <p class="text-primary text-base">+₹42,500</p>
+                    </div>
+                    <div class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 hover:bg-[#1E2632] transition-all duration-300 border border-white/5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
+                                <i class="fab fa-spotify text-green-500"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-base">Spotify</p>
+                                <p class="text-sm text-gray-400">22 Jan, 11:54 PM</p>
+                            </div>
+                        </div>
+                        <p class="text-red-500 text-base">-₹999</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invest Screen -->
+        <div id="invest" class="page hidden space-y-8">
+            <h2 class="text-2xl font-bold mb-4">Investments</h2>
+            <p class="text-gray-400">Investment opportunities will be listed here.</p>
+        </div>
+
+        <!-- Loans Screen -->
+        <div id="loans" class="page hidden space-y-8">
+            <!-- Instant Loans Section -->
+            <section id="instant-loan-section" class="mb-8 scroll-mt-20">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Instant Loans</h2>
+                    <a href="#" class="text-primary text-sm">View All</a>
+                </div>
+                <div id="instant-loans" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Loan cards will be populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Personal Loans Section -->
+            <section id="personal-loan-section" class="mb-8 scroll-mt-20">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Personal Loans</h2>
+                    <a href="#" class="text-primary text-sm">View All</a>
+                </div>
+                <div id="personal-loans" class="grid grid-cols-1 gap-4">
+                    <!-- Personal loan cards will be populated by JavaScript -->
+                </div>
+            </section>
+
+            <!-- Education Loans Section -->
+            <section id="education-loan-section" class="mb-8 scroll-mt-20">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Education Loans</h2>
+                    <a href="#" class="text-primary text-sm">View All</a>
+                </div>
+                <div id="education-loans" class="grid grid-cols-1 gap-4">
+                    <!-- Education loan cards will be populated by JavaScript -->
+                </div>
+            </section>
+        </div>
+
+        <!-- Profile Screen -->
+        <div id="profile" class="page hidden space-y-8">
+            <div class="bg-[#1E2632]/50 backdrop-blur-lg rounded-2xl p-6 mb-6">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-20 h-20 rounded-full bg-gray-600 overflow-hidden">
+                        <img src="profile.jpg" alt="Profile" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold">John Doe</h2>
+                        <p class="text-gray-400">john.doe@example.com</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-black/30 rounded-xl p-4">
+                        <p class="text-gray-400 text-sm">Total Balance</p>
+                        <p class="text-2xl font-bold">₹8,45,220</p>
+                    </div>
+                    <div class="bg-black/30 rounded-xl p-4">
+                        <p class="text-gray-400 text-sm">Total Investments</p>
+                        <p class="text-2xl font-bold">₹5,50,000</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#1E2632]/50 backdrop-blur-lg rounded-2xl p-6">
+                <h3 class="text-lg font-semibold mb-4">Account Settings</h3>
+                <div class="space-y-4">
+                    <button class="w-full bg-black/30 hover:bg-black/40 py-3 rounded-xl font-medium transition-all flex items-center justify-between px-4">
+                        <span>Edit Profile</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="w-full bg-black/30 hover:bg-black/40 py-3 rounded-xl font-medium transition-all flex items-center justify-between px-4">
+                        <span>Security</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button class="w-full bg-black/30 hover:bg-black/40 py-3 rounded-xl font-medium transition-all flex items-center justify-between px-4">
+                        <span>Notifications</span>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button onclick="handleSignOut()" class="w-full bg-red-500/10 hover:bg-red-500/20 py-3 rounded-xl font-medium transition-all text-red-500">
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#1A1E25] px-6 py-4 border-t border-white/5 z-50">
+        <div class="flex justify-between items-center relative max-w-md mx-auto">
+            <div id="nav-indicator" class="absolute"></div>
+            <a href="#home" class="bottom-nav-item active relative flex flex-col items-center group" data-index="0">
+                <div class="icon-container p-3 rounded-xl">
+                    <div class="bg-circle"></div>
+                    <i class="fas fa-home text-xl"></i>
+                </div>
+                <span class="text-xs mt-1">Home</span>
+            </a>
+            <a href="#invest" class="bottom-nav-item relative flex flex-col items-center text-gray-400 group" data-index="1">
+                <div class="icon-container p-3 rounded-xl">
+                    <div class="bg-circle"></div>
+                    <i class="fas fa-chart-line text-xl"></i>
+                </div>
+                <span class="text-xs mt-1">Invest</span>
+            </a>
+            <a href="#loans" class="bottom-nav-item relative flex flex-col items-center text-gray-400 group" data-index="2">
+                <div class="icon-container p-3 rounded-xl">
+                    <div class="bg-circle"></div>
+                    <i class="fas fa-hand-holding-usd text-xl"></i>
+                </div>
+                <span class="text-xs mt-1">Loans</span>
+            </a>
+            <a href="#profile" class="bottom-nav-item relative flex flex-col items-center text-gray-400 group" data-index="3">
+                <div class="icon-container p-3 rounded-xl">
+                    <div class="bg-circle"></div>
+                    <i class="fas fa-user text-xl"></i>
+                </div>
+                <span class="text-xs mt-1">Profile</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Profile/Auth Page -->
+    <div id="authPage" class="page fixed inset-0 bg-[#0A0E15] z-50 hidden">
+        <div class="min-h-screen flex flex-col">
+            <!-- Auth Header -->
+            <header class="px-4 py-4 flex items-center">
+                <button onclick="hideAuthPage()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
+                    <i class="fas fa-arrow-left text-white"></i>
+                </button>
+                <h1 class="ml-4 text-xl font-semibold">Profile</h1>
+            </header>
+
+            <!-- Auth Content -->
+            <div class="flex-1 px-4 py-8">
+                <!-- Login Form -->
+                <div id="loginForm" class="space-y-6">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 mx-auto bg-[#1A1E25] rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-user text-3xl text-[#10B981]"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Welcome Back</h2>
+                        <p class="text-gray-400 mt-2">Sign in to continue</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <input type="email" placeholder="Email" class="w-full bg-[#1A1E25] rounded-xl px-4 py-3.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#10B981] transition-all">
+                        </div>
+                        <div>
+                            <input type="password" placeholder="Password" class="w-full bg-[#1A1E25] rounded-xl px-4 py-3.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#10B981] transition-all">
+                        </div>
+                        <button onclick="handleLogin(event)" 
+                                class="w-full bg-[#10B981] hover:bg-[#059669] py-3.5 rounded-xl font-medium transition-all active:scale-[0.98]">
+                            Sign In
+                        </button>
+                        <div class="relative my-6">
+                            <div class="absolute inset-0 flex items-center">
+                                <div class="w-full border-t border-gray-600"></div>
+                            </div>
+                            <div class="relative flex justify-center text-sm">
+                                <span class="px-2 bg-[#1A1E25] text-gray-400">Or continue with</span>
+                            </div>
+                        </div>
+                        <button onclick="handleGoogleSignIn(event)" 
+                                class="w-full bg-white hover:bg-gray-50 text-gray-900 py-3.5 rounded-xl font-medium transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                                 alt="Google" 
+                                 class="w-5 h-5">
+                            <span>Sign in with Google</span>
+                        </button>
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-gray-400">Don't have an account? 
+                            <a href="#" onclick="toggleAuthForm('signup')" class="text-[#10B981] hover:underline">Sign Up</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Sign Up Form (hidden by default) -->
+                <div id="signupForm" class="space-y-6 hidden">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 mx-auto bg-[#1A1E25] rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-user-plus text-3xl text-[#10B981]"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Create Account</h2>
+                        <p class="text-gray-400 mt-2">Sign up to get started</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <input type="text" placeholder="Full Name" class="w-full bg-[#1A1E25] rounded-xl px-4 py-3.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#10B981] transition-all">
+                        </div>
+                        <div>
+                            <input type="email" placeholder="Email" class="w-full bg-[#1A1E25] rounded-xl px-4 py-3.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#10B981] transition-all">
+                        </div>
+                        <div>
+                            <input type="password" placeholder="Password" class="w-full bg-[#1A1E25] rounded-xl px-4 py-3.5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#10B981] transition-all">
+                        </div>
+                        <button onclick="handleSignup(event)" 
+                                class="w-full bg-[#10B981] hover:bg-[#059669] py-3.5 rounded-xl font-medium transition-all active:scale-[0.98]">
+                            Create Account
+                        </button>
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-gray-400">Already have an account? 
+                            <a href="#" onclick="toggleAuthForm('login')" class="text-[#10B981] hover:underline">Sign In</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Privacy Policy Screen with enhanced styling -->
+    <div id="privacy" class="page hidden">
+        <div class="bg-[#0A0E15] min-h-screen">
+            <!-- Back Button and Title -->
+            <div class="sticky top-0 z-10 bg-[#0A0E15]/95 backdrop-blur-lg px-6 py-4 border-b border-white/5">
+                <div class="flex items-center gap-4">
+                    <button onclick="navigateToSection('home')" 
+                            class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#1E2632] hover:bg-[#1E2632]/80 transition-all">
+                        <i class="fas fa-arrow-left text-gray-300"></i>
+                    </button>
+                    <h1 class="text-2xl font-bold text-white">Privacy Policy</h1>
+                </div>
+            </div>
+
+            <!-- Privacy Content -->
+            <div class="px-6 py-8 space-y-6">
+                <!-- Introduction -->
+                <section class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 border border-white/5">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-[#10B981]/10 flex items-center justify-center">
+                            <i class="fas fa-shield-alt text-[#10B981] text-xl"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold">Introduction</h2>
+                    </div>
+                    <p class="text-gray-300 leading-relaxed">
+                        At FinTrack, we take your privacy seriously. This policy describes how we collect, use, and protect your personal information.
+                    </p>
+                </section>
+
+                <!-- Information Collection -->
+                <section class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 border border-white/5">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-[#10B981]/10 flex items-center justify-center">
+                            <i class="fas fa-database text-[#10B981] text-xl"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold">Information We Collect</h2>
+                    </div>
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-[#10B981]/10 flex items-center justify-center mt-0.5">
+                                <i class="fas fa-check text-[#10B981] text-xs"></i>
+                            </div>
+                            <span class="text-gray-300">Personal identification information (Name, email address, phone number)</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-[#10B981]/10 flex items-center justify-center mt-0.5">
+                                <i class="fas fa-check text-[#10B981] text-xs"></i>
+                            </div>
+                            <span class="text-gray-300">Financial information (Bank account details, transaction history)</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-[#10B981]/10 flex items-center justify-center mt-0.5">
+                                <i class="fas fa-check text-[#10B981] text-xs"></i>
+                            </div>
+                            <span class="text-gray-300">Device and usage information (IP address, browser type)</span>
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- How We Use Information -->
+                <section class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 border border-white/5">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-[#10B981]/10 flex items-center justify-center">
+                            <i class="fas fa-cog text-[#10B981] text-xl"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold">How We Use Your Information</h2>
+                    </div>
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-[#10B981]/10 flex items-center justify-center mt-0.5">
+                                <i class="fas fa-check text-[#10B981] text-xs"></i>
+                            </div>
+                            <span class="text-gray-300">Process your transactions and maintain your account</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-[#10B981]/10 flex items-center justify-center mt-0.5">
+                                <i class="fas fa-check text-[#10B981] text-xs"></i>
+                            </div>
+                            <span class="text-gray-300">Provide customer support and respond to your requests</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded-full bg-[#10B981]/10 flex items-center justify-center mt-0.5">
+                                <i class="fas fa-check text-[#10B981] text-xs"></i>
+                            </div>
+                            <span class="text-gray-300">Improve our services and develop new features</span>
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- Security -->
+                <section class="bg-[#1E2632]/95 backdrop-blur-lg rounded-xl p-6 border border-white/5">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-[#10B981]/10 flex items-center justify-center">
+                            <i class="fas fa-lock text-[#10B981] text-xl"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold">Security</h2>
+                    </div>
+                    <p class="text-gray-300 leading-relaxed">
+                        We implement industry-standard security measures to protect your personal information. This includes encryption, secure servers, and regular security audits.
+                    </p>
+                </section>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
